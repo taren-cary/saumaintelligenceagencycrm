@@ -30,9 +30,16 @@ import {
 const TYPE_OPTIONS = ["call", "email", "message", "meeting", "loom", "note"];
 const DIRECTION_OPTIONS = ["outbound", "inbound", "internal"];
 
+function nowLocalDatetime() {
+  const d = new Date();
+  d.setSeconds(0, 0);
+  return d.toISOString().slice(0, 16);
+}
+
 const initialState = {
   type: "call",
   direction: "outbound",
+  loggedAt: nowLocalDatetime(),
   subject: "",
   summary: "",
   followUpRequired: false,
@@ -60,7 +67,7 @@ export function LogCommunicationSheet({
   }
 
   function reset() {
-    setForm(initialState);
+    setForm({ ...initialState, loggedAt: nowLocalDatetime() });
     setDecisions([]);
     setDecisionDraft("");
   }
@@ -90,6 +97,7 @@ export function LogCommunicationSheet({
       client_id: clientId,
       type: form.type,
       direction: form.direction,
+      logged_at: form.loggedAt ? new Date(form.loggedAt).toISOString() : new Date().toISOString(),
       subject: form.subject.trim() || null,
       summary: form.summary.trim(),
       decisions_made: decisions,
@@ -160,6 +168,16 @@ export function LogCommunicationSheet({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="comm-date">Date &amp; time</Label>
+              <Input
+                id="comm-date"
+                type="datetime-local"
+                value={form.loggedAt}
+                onChange={(e) => update("loggedAt", e.target.value)}
+              />
             </div>
 
             <div className="space-y-1.5">
