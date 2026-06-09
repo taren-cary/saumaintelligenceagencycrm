@@ -17,6 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sauma CRM",
   description: "Client relationship management for Sauma AI",
+  icons: { icon: "/sauma-logo.png" },
 };
 
 export default function RootLayout({
