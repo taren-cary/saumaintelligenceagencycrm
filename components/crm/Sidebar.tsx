@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -15,7 +16,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
-  Boxes,
   Search,
 } from "lucide-react";
 
@@ -40,7 +40,13 @@ export function Sidebar({ onSearchOpen }: { onSearchOpen?: () => void } = {}) {
       )}
     >
       <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
-        <Boxes className="h-5 w-5 shrink-0 text-primary" />
+        <Image
+          src="/sauma-logo.png"
+          alt="Sauma"
+          width={28}
+          height={28}
+          className="shrink-0 object-contain"
+        />
         {!collapsed && (
           <span className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
             Sauma CRM
