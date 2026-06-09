@@ -30,6 +30,7 @@ import { ClientTimeTab } from "@/components/crm/ClientTimeTab";
 import { ClientDecisionsTab } from "@/components/crm/ClientDecisionsTab";
 import { LogCommunicationSheet } from "@/components/crm/LogCommunicationSheet";
 import { ConvertToClientDialog } from "@/components/crm/ConvertToClientDialog";
+import { EditProspectSheet } from "@/components/crm/EditProspectSheet";
 import { formatCurrency, formatLabel } from "@/lib/format";
 import { daysUntil } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,7 @@ export function ClientDetailView({
 
   const [logSheetOpen, setLogSheetOpen] = useState(searchParams.get("log") === "1");
   const [convertOpen, setConvertOpen] = useState(false);
+  const [editProspectOpen, setEditProspectOpen] = useState(false);
 
   const isProspect = client.status === "prospect";
 
@@ -248,9 +250,14 @@ export function ClientDetailView({
               )}
             </div>
 
-            <Button onClick={() => setConvertOpen(true)} size="sm">
-              Convert to client
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setEditProspectOpen(true)}>
+                Edit
+              </Button>
+              <Button size="sm" onClick={() => setConvertOpen(true)}>
+                Convert to client
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -318,6 +325,14 @@ export function ClientDetailView({
           prospect={client}
           open={convertOpen}
           onOpenChange={setConvertOpen}
+        />
+      )}
+
+      {isProspect && (
+        <EditProspectSheet
+          prospect={client}
+          open={editProspectOpen}
+          onOpenChange={setEditProspectOpen}
         />
       )}
     </div>

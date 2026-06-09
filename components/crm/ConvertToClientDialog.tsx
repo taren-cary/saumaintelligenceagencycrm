@@ -36,6 +36,8 @@ export function ConvertToClientDialog({
         status: "active",
         pipeline_stage: "won",
         monthly_value: monthlyValue ? parseFloat(monthlyValue) : null,
+        next_action: null,
+        next_action_date: null,
       })
       .eq("id", prospect.id);
     setConverting(false);

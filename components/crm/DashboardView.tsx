@@ -109,6 +109,19 @@ export function DashboardView({ data }: { data: DashboardData }) {
     return grouped;
   }, [openTasks, today]);
 
+  // Prospect next actions — has a next_action set, not won/lost
+  const prospectNextActions = useMemo(() =>
+    pipeline
+      .filter((p) => p.next_action && ACTIVE_STAGES.includes(p.pipeline_stage ?? ""))
+      .sort((a, b) => {
+        if (!a.next_action_date && !b.next_action_date) return 0;
+        if (!a.next_action_date) return 1;
+        if (!b.next_action_date) return -1;
+        return a.next_action_date.localeCompare(b.next_action_date);
+      }),
+    [pipeline]
+  );
+
   // Pipeline snapshot
   const pipelineActive = useMemo(() => pipeline.filter((p) => ACTIVE_STAGES.includes(p.pipeline_stage ?? "")), [pipeline]);
   const pipelineTotalValue = useMemo(() => pipelineActive.reduce((s, p) => s + (p.estimated_value ?? 0), 0), [pipelineActive]);
@@ -284,6 +297,50 @@ export function DashboardView({ data }: { data: DashboardData }) {
               </div>
             )}
           </section>
+
+          {/* Prospect next actions */}
+          {prospectNextActions.length > 0 && (
+            <section>
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <GitBranch className="h-4 w-4 text-text-muted" />
+                Prospect next actions
+                <span className="ml-1 font-normal text-text-muted">({prospectNextActions.length})</span>
+              </h2>
+              <div className="space-y-2">
+                {prospectNextActions.map((p) => {
+                  const isOverdue = p.next_action_date && p.next_action_date < today;
+                  const isDueThisWeek = p.next_action_date && p.next_action_date >= today && p.next_action_date <= weekFromNow;
+                  return (
+                    <Link key={p.id} href={`/clients/${p.id}`}>
+                      <div className={cn(
+                        "group rounded-xl border bg-card p-3 transition-colors hover:border-foreground/20",
+                        isOverdue ? "border-danger/20" : "border-border"
+                      )}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground group-hover:underline">{p.name}</p>
+                            <p className="mt-0.5 truncate text-sm text-text-secondary">{p.next_action}</p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            {p.next_action_date ? (
+                              <span className={cn(
+                                "text-xs",
+                                isOverdue ? "font-medium text-danger" : isDueThisWeek ? "font-medium text-warning" : "text-text-muted"
+                              )}>
+                                <RelativeDate date={p.next_action_date} />
+                              </span>
+                            ) : (
+                              <span className="text-xs text-text-muted">No date</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           {/* Overdue follow-ups */}
           {overdueFollowUps.length > 0 && (
