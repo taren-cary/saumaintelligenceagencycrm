@@ -28,7 +28,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 import type { LucideIcon } from "lucide-react";
 
 type ClientRow = Pick<Tables<"clients">, "id" | "name" | "status" | "health_score" | "monthly_value" | "contract_renewal">;
-type PipelineRow = Pick<Tables<"pipeline">, "id" | "name" | "company" | "stage" | "estimated_value" | "probability" | "next_action" | "next_action_date" | "expected_close">;
+type PipelineRow = Pick<Tables<"clients">, "id" | "name" | "company" | "pipeline_stage" | "estimated_value" | "probability" | "next_action" | "next_action_date" | "expected_close">;
 
 export type DashboardData = {
   clients: ClientRow[];
@@ -110,7 +110,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
   }, [openTasks, today]);
 
   // Pipeline snapshot
-  const pipelineActive = useMemo(() => pipeline.filter((p) => ACTIVE_STAGES.includes(p.stage ?? "")), [pipeline]);
+  const pipelineActive = useMemo(() => pipeline.filter((p) => ACTIVE_STAGES.includes(p.pipeline_stage ?? "")), [pipeline]);
   const pipelineTotalValue = useMemo(() => pipelineActive.reduce((s, p) => s + (p.estimated_value ?? 0), 0), [pipelineActive]);
   const pipelineWeightedValue = useMemo(() =>
     pipelineActive.reduce((s, p) => s + (p.estimated_value ?? 0) * ((p.probability ?? 50) / 100), 0),
@@ -118,7 +118,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
   );
   const stageCounts = useMemo(() => {
     const m: Record<string, number> = {};
-    pipeline.forEach((p) => { if (p.stage) m[p.stage] = (m[p.stage] ?? 0) + 1; });
+    pipeline.forEach((p) => { if (p.pipeline_stage) m[p.pipeline_stage] = (m[p.pipeline_stage] ?? 0) + 1; });
     return m;
   }, [pipeline]);
 

@@ -5,8 +5,9 @@ import { PipelineView } from "@/components/crm/PipelineView";
 export default async function PipelinePage() {
   const supabase = await createClient();
   const { data: prospects } = await supabase
-    .from("pipeline")
+    .from("clients")
     .select("*")
+    .eq("status", "prospect")
     .order("created_at", { ascending: false });
 
   return (

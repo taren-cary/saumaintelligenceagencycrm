@@ -97,15 +97,25 @@ export type Database = {
           contract_start: string | null
           created_at: string | null
           email: string | null
+          estimated_value: number | null
+          expected_close: string | null
           health_score: number | null
           hourly_rate: number | null
           id: string
+          lost_reason: string | null
           monthly_value: number | null
           name: string
+          next_action: string | null
+          next_action_date: string | null
           notes: string | null
           payment_terms: string | null
           phone: string | null
+          pipeline_stage: string | null
+          platform_notes: string | null
+          probability: number | null
+          source: string | null
           status: string
+          system_type: string | null
           tags: string[] | null
           timezone: string | null
           updated_at: string | null
@@ -121,15 +131,25 @@ export type Database = {
           contract_start?: string | null
           created_at?: string | null
           email?: string | null
+          estimated_value?: number | null
+          expected_close?: string | null
           health_score?: number | null
           hourly_rate?: number | null
           id?: string
+          lost_reason?: string | null
           monthly_value?: number | null
           name: string
+          next_action?: string | null
+          next_action_date?: string | null
           notes?: string | null
           payment_terms?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
+          platform_notes?: string | null
+          probability?: number | null
+          source?: string | null
           status?: string
+          system_type?: string | null
           tags?: string[] | null
           timezone?: string | null
           updated_at?: string | null
@@ -145,15 +165,25 @@ export type Database = {
           contract_start?: string | null
           created_at?: string | null
           email?: string | null
+          estimated_value?: number | null
+          expected_close?: string | null
           health_score?: number | null
           hourly_rate?: number | null
           id?: string
+          lost_reason?: string | null
           monthly_value?: number | null
           name?: string
+          next_action?: string | null
+          next_action_date?: string | null
           notes?: string | null
           payment_terms?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
+          platform_notes?: string | null
+          probability?: number | null
+          source?: string | null
           status?: string
+          system_type?: string | null
           tags?: string[] | null
           timezone?: string | null
           updated_at?: string | null
@@ -260,69 +290,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      pipeline: {
-        Row: {
-          company: string | null
-          created_at: string | null
-          email: string | null
-          estimated_value: number | null
-          expected_close: string | null
-          id: string
-          lost_reason: string | null
-          name: string
-          next_action: string | null
-          next_action_date: string | null
-          notes: string | null
-          phone: string | null
-          platform_notes: string | null
-          probability: number | null
-          source: string | null
-          stage: string | null
-          system_type: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          company?: string | null
-          created_at?: string | null
-          email?: string | null
-          estimated_value?: number | null
-          expected_close?: string | null
-          id?: string
-          lost_reason?: string | null
-          name: string
-          next_action?: string | null
-          next_action_date?: string | null
-          notes?: string | null
-          phone?: string | null
-          platform_notes?: string | null
-          probability?: number | null
-          source?: string | null
-          stage?: string | null
-          system_type?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          company?: string | null
-          created_at?: string | null
-          email?: string | null
-          estimated_value?: number | null
-          expected_close?: string | null
-          id?: string
-          lost_reason?: string | null
-          name?: string
-          next_action?: string | null
-          next_action_date?: string | null
-          notes?: string | null
-          phone?: string | null
-          platform_notes?: string | null
-          probability?: number | null
-          source?: string | null
-          stage?: string | null
-          system_type?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       projects: {
         Row: {

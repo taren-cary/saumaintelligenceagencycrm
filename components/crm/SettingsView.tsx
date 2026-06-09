@@ -41,7 +41,6 @@ const EXPORT_TABLES = [
   "time_logs",
   "communications",
   "decisions_log",
-  "pipeline",
 ] as const;
 
 export function SettingsView() {

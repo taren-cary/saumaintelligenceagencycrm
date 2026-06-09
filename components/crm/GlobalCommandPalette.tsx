@@ -39,8 +39,9 @@ async function runSearch(q: string): Promise<ResultItem[]> {
       .neq("status", "done")
       .limit(5),
     supabase
-      .from("pipeline")
-      .select("id, name, company, stage")
+      .from("clients")
+      .select("id, name, company, pipeline_stage")
+      .eq("status", "prospect")
       .or(`name.ilike.${term},company.ilike.${term}`)
       .limit(5),
     supabase
@@ -80,8 +81,8 @@ async function runSearch(q: string): Promise<ResultItem[]> {
       id: `pipeline-${p.id}`,
       group: "Pipeline",
       label: p.name,
-      sub: p.company ?? p.stage ?? undefined,
-      href: "/pipeline",
+      sub: p.company ?? p.pipeline_stage ?? undefined,
+      href: `/clients/${p.id}`,
       icon: GitBranch,
     })
   );

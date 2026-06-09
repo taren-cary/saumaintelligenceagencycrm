@@ -33,7 +33,7 @@ const initial = {
   company: "",
   email: "",
   phone: "",
-  stage: "lead" as string,
+  pipeline_stage: "lead" as string,
   estimated_value: "",
   probability: "50",
   expected_close: "",
@@ -71,12 +71,13 @@ export function AddProspectSheet({
     }
     setSubmitting(true);
     const supabase = createClient();
-    const { error } = await supabase.from("pipeline").insert({
+    const { error } = await supabase.from("clients").insert({
       name: form.name.trim(),
       company: form.company.trim() || null,
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
-      stage: form.stage,
+      status: "prospect",
+      pipeline_stage: form.pipeline_stage,
       estimated_value: form.estimated_value ? parseFloat(form.estimated_value) : null,
       probability: form.probability ? parseInt(form.probability, 10) : null,
       expected_close: form.expected_close || null,
@@ -85,6 +86,7 @@ export function AddProspectSheet({
       next_action_date: form.next_action_date || null,
       platform_notes: form.platform_notes.trim() || null,
       notes: form.notes.trim() || null,
+      health_score: 3,
     });
     setSubmitting(false);
     if (error) {
@@ -98,13 +100,7 @@ export function AddProspectSheet({
   }
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) reset();
-      }}
-    >
+    <Sheet open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) reset(); }}>
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>Add prospect</SheetTitle>
@@ -115,60 +111,34 @@ export function AddProspectSheet({
           <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
             <div className="space-y-1.5">
               <Label htmlFor="p-name">Name / Contact *</Label>
-              <Input
-                id="p-name"
-                required
-                placeholder="e.g. Jane Smith"
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-              />
+              <Input id="p-name" required placeholder="e.g. Jane Smith" value={form.name} onChange={(e) => update("name", e.target.value)} />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="p-company">Company</Label>
-              <Input
-                id="p-company"
-                placeholder="e.g. Acme Corp"
-                value={form.company}
-                onChange={(e) => update("company", e.target.value)}
-              />
+              <Input id="p-company" placeholder="e.g. Acme Corp" value={form.company} onChange={(e) => update("company", e.target.value)} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="p-email">Email</Label>
-                <Input
-                  id="p-email"
-                  type="email"
-                  placeholder="jane@acme.com"
-                  value={form.email}
-                  onChange={(e) => update("email", e.target.value)}
-                />
+                <Input id="p-email" type="email" placeholder="jane@acme.com" value={form.email} onChange={(e) => update("email", e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="p-phone">Phone</Label>
-                <Input
-                  id="p-phone"
-                  placeholder="+1 555-000-0000"
-                  value={form.phone}
-                  onChange={(e) => update("phone", e.target.value)}
-                />
+                <Input id="p-phone" placeholder="+1 555-000-0000" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Stage</Label>
-                <Select value={form.stage} onValueChange={(v) => update("stage", v ?? "lead")}>
+                <Select value={form.pipeline_stage} onValueChange={(v) => update("pipeline_stage", v ?? "lead")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue>
-                      {(v: string) => formatLabel(v)}
-                    </SelectValue>
+                    <SelectValue>{(v: string) => formatLabel(v)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {STAGES.map((s) => (
-                      <SelectItem key={s} value={s}>{formatLabel(s)}</SelectItem>
-                    ))}
+                    {STAGES.map((s) => <SelectItem key={s} value={s}>{formatLabel(s)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -176,15 +146,11 @@ export function AddProspectSheet({
                 <Label>Source</Label>
                 <Select value={form.source} onValueChange={(v) => update("source", v ?? "")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue>
-                      {(v: string) => v ? formatLabel(v) : "None"}
-                    </SelectValue>
+                    <SelectValue>{(v: string) => v ? formatLabel(v) : "None"}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">None</SelectItem>
-                    {SOURCES.map((s) => (
-                      <SelectItem key={s} value={s}>{formatLabel(s)}</SelectItem>
-                    ))}
+                    {SOURCES.map((s) => <SelectItem key={s} value={s}>{formatLabel(s)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -193,70 +159,33 @@ export function AddProspectSheet({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="p-value">Estimated value ($)</Label>
-                <Input
-                  id="p-value"
-                  type="number"
-                  min="0"
-                  step="100"
-                  placeholder="5000"
-                  value={form.estimated_value}
-                  onChange={(e) => update("estimated_value", e.target.value)}
-                />
+                <Input id="p-value" type="number" min="0" step="100" placeholder="5000" value={form.estimated_value} onChange={(e) => update("estimated_value", e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="p-prob">Probability (%)</Label>
-                <Input
-                  id="p-prob"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="5"
-                  placeholder="50"
-                  value={form.probability}
-                  onChange={(e) => update("probability", e.target.value)}
-                />
+                <Input id="p-prob" type="number" min="0" max="100" step="5" placeholder="50" value={form.probability} onChange={(e) => update("probability", e.target.value)} />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="p-close">Expected close date</Label>
-              <Input
-                id="p-close"
-                type="date"
-                value={form.expected_close}
-                onChange={(e) => update("expected_close", e.target.value)}
-              />
+              <Input id="p-close" type="date" value={form.expected_close} onChange={(e) => update("expected_close", e.target.value)} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="p-action">Next action</Label>
-                <Input
-                  id="p-action"
-                  placeholder="e.g. Send proposal"
-                  value={form.next_action}
-                  onChange={(e) => update("next_action", e.target.value)}
-                />
+                <Input id="p-action" placeholder="e.g. Send proposal" value={form.next_action} onChange={(e) => update("next_action", e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="p-action-date">Next action date</Label>
-                <Input
-                  id="p-action-date"
-                  type="date"
-                  value={form.next_action_date}
-                  onChange={(e) => update("next_action_date", e.target.value)}
-                />
+                <Input id="p-action-date" type="date" value={form.next_action_date} onChange={(e) => update("next_action_date", e.target.value)} />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="p-platform">Platform notes</Label>
-              <Input
-                id="p-platform"
-                placeholder="Key context for this prospect..."
-                value={form.platform_notes}
-                onChange={(e) => update("platform_notes", e.target.value)}
-              />
+              <Input id="p-platform" placeholder="Key context for this prospect..." value={form.platform_notes} onChange={(e) => update("platform_notes", e.target.value)} />
             </div>
 
             <div className="space-y-1.5">
@@ -274,14 +203,7 @@ export function AddProspectSheet({
 
           <SheetFooter className="border-t border-border">
             <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                "Add prospect"
-              )}
+              {submitting ? <><Loader2 className="h-4 w-4 animate-spin" />Adding...</> : "Add prospect"}
             </Button>
           </SheetFooter>
         </form>

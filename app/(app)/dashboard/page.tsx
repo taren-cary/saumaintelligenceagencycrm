@@ -13,7 +13,7 @@ export default async function DashboardPage() {
     { data: pipeline },
     { data: recentDoneTasks },
   ] = await Promise.all([
-    supabase.from("clients").select("id, name, status, health_score, monthly_value, contract_renewal").order("health_score"),
+    supabase.from("clients").select("id, name, status, health_score, monthly_value, contract_renewal").neq("status", "prospect").order("health_score"),
     supabase
       .from("tasks")
       .select("id, title, status, priority, due_date, client_id, clients(id, name)")
@@ -22,7 +22,11 @@ export default async function DashboardPage() {
       .from("communications")
       .select("id, type, subject, summary, logged_at, follow_up_required, follow_up_date, follow_up_note, client_id, clients(id, name)")
       .order("logged_at", { ascending: false }),
-    supabase.from("pipeline").select("id, name, company, stage, estimated_value, probability, next_action, next_action_date, expected_close").order("created_at"),
+    supabase
+      .from("clients")
+      .select("id, name, company, pipeline_stage, estimated_value, probability, next_action, next_action_date, expected_close")
+      .eq("status", "prospect")
+      .order("created_at"),
     supabase
       .from("tasks")
       .select("id, title, completed_at, client_id, clients(id, name)")
@@ -36,7 +40,7 @@ export default async function DashboardPage() {
     clients: clients ?? [],
     openTasks: (openTasks ?? []) as DashboardData["openTasks"],
     communications: (communications ?? []) as DashboardData["communications"],
-    pipeline: pipeline ?? [],
+    pipeline: (pipeline ?? []) as DashboardData["pipeline"],
     recentDoneTasks: (recentDoneTasks ?? []) as DashboardData["recentDoneTasks"],
     today,
     weekFromNow,

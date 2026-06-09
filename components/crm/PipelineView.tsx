@@ -14,7 +14,7 @@ import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/lib/supabase/database.types";
 
-export type Prospect = Tables<"pipeline">;
+export type Prospect = Tables<"clients">;
 
 const STAGES = ["lead", "contacted", "discovery", "proposal", "negotiation", "won", "lost"] as const;
 type Stage = (typeof STAGES)[number];
@@ -39,6 +39,8 @@ const STAGE_COLORS: Record<Stage, string> = {
   lost: "border-t-danger/40",
 };
 
+const ACTIVE_STAGES: Stage[] = ["lead", "contacted", "discovery", "proposal", "negotiation"];
+
 export function PipelineView({ prospects }: { prospects: Prospect[] }) {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
@@ -51,14 +53,14 @@ export function PipelineView({ prospects }: { prospects: Prospect[] }) {
     const map = new Map<Stage, Prospect[]>();
     STAGES.forEach((s) => map.set(s, []));
     prospects.forEach((p) => {
-      const stage = (p.stage ?? "lead") as Stage;
+      const stage = (p.pipeline_stage ?? "lead") as Stage;
       map.get(stage)?.push(p);
     });
     return map;
   }, [prospects]);
 
   const activeProspects = useMemo(() =>
-    prospects.filter((p) => p.stage !== "won" && p.stage !== "lost"),
+    prospects.filter((p) => ACTIVE_STAGES.includes((p.pipeline_stage ?? "lead") as Stage)),
     [prospects]
   );
   const totalValue = useMemo(() =>
@@ -73,8 +75,8 @@ export function PipelineView({ prospects }: { prospects: Prospect[] }) {
   async function moveToStage(prospectId: string, newStage: Stage) {
     const supabase = createClient();
     const { error } = await supabase
-      .from("pipeline")
-      .update({ stage: newStage })
+      .from("clients")
+      .update({ pipeline_stage: newStage })
       .eq("id", prospectId);
     if (error) {
       toast.error("Failed to update stage", { description: error.message });
@@ -87,7 +89,6 @@ export function PipelineView({ prospects }: { prospects: Prospect[] }) {
     router.refresh();
   }
 
-  // DnD handlers
   function handleDragStart(e: React.DragEvent, id: string) {
     setDraggingId(id);
     e.dataTransfer.effectAllowed = "move";
@@ -118,9 +119,9 @@ export function PipelineView({ prospects }: { prospects: Prospect[] }) {
     const id = e.dataTransfer.getData("text/plain");
     setDragOverStage(null);
     dragCounterRef.current = {} as Record<Stage, number>;
-    if (id && id !== "") {
+    if (id) {
       const current = prospects.find((p) => p.id === id);
-      if (current?.stage !== stage) moveToStage(id, stage);
+      if (current?.pipeline_stage !== stage) moveToStage(id, stage);
     }
     setDraggingId(null);
   }
@@ -166,16 +167,10 @@ export function PipelineView({ prospects }: { prospects: Prospect[] }) {
               onDragLeave={(e) => handleDragLeave(e, stage)}
               onDrop={(e) => handleDrop(e, stage)}
             >
-              {/* Column header */}
-              <div className={cn(
-                "rounded-t-lg border-t-2 bg-muted/40 px-3 py-2",
-                STAGE_COLORS[stage]
-              )}>
+              <div className={cn("rounded-t-lg border-t-2 bg-muted/40 px-3 py-2", STAGE_COLORS[stage])}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-foreground">{STAGE_LABELS[stage]}</span>
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-text-muted">
-                    {cards.length}
-                  </span>
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-text-muted">{cards.length}</span>
                 </div>
                 {cards.length > 0 && (
                   <p className="text-xs text-text-muted">
@@ -184,7 +179,6 @@ export function PipelineView({ prospects }: { prospects: Prospect[] }) {
                 )}
               </div>
 
-              {/* Drop zone */}
               <div className={cn(
                 "flex flex-1 flex-col gap-2 rounded-b-lg p-1 transition-colors",
                 isOver && "bg-primary/5 ring-1 ring-primary/30"
@@ -250,66 +244,64 @@ function ProspectCard({
     if (newStage === "won") onConvert();
   }
 
+  const stage = (prospect.pipeline_stage ?? "lead") as Stage;
+
   return (
-    <div
-      draggable
-      onDragStart={(e) => onDragStart(e, prospect.id)}
-      onDragEnd={onDragEnd}
-      className={cn(
-        "group cursor-grab rounded-lg border border-border bg-card p-3 transition-all active:cursor-grabbing",
-        isDragging && "opacity-40 ring-1 ring-primary/40"
-      )}
-    >
-      <div className="space-y-2">
-        <div>
-          <p className="font-medium text-foreground leading-tight">{prospect.name}</p>
-          {prospect.company && (
-            <p className="text-xs text-text-muted">{prospect.company}</p>
+    <Link href={`/clients/${prospect.id}`}>
+      <div
+        draggable
+        onDragStart={(e) => { e.stopPropagation(); onDragStart(e, prospect.id); }}
+        onDragEnd={onDragEnd}
+        className={cn(
+          "group cursor-grab rounded-lg border border-border bg-card p-3 transition-all active:cursor-grabbing",
+          isDragging && "opacity-40 ring-1 ring-primary/40"
+        )}
+      >
+        <div className="space-y-2">
+          <div>
+            <p className="font-medium text-foreground leading-tight group-hover:underline">{prospect.name}</p>
+            {prospect.company && <p className="text-xs text-text-muted">{prospect.company}</p>}
+          </div>
+
+          {prospect.estimated_value != null && (
+            <div className="flex items-center gap-1 text-sm">
+              <span className="font-semibold tabular-nums text-foreground">
+                {formatCurrency(prospect.estimated_value)}
+              </span>
+              {prospect.probability != null && (
+                <span className="text-text-muted">· {prospect.probability}%</span>
+              )}
+            </div>
+          )}
+
+          {prospect.platform_notes && (
+            <p className="line-clamp-2 text-xs text-text-secondary">{prospect.platform_notes}</p>
+          )}
+
+          {prospect.next_action && (
+            <div className="rounded bg-muted px-2 py-1 text-xs text-text-secondary">
+              <span className="text-text-muted">Next: </span>
+              {prospect.next_action}
+              {prospect.next_action_date && (
+                <span className="ml-1 text-text-muted">(<RelativeDate date={prospect.next_action_date} />)</span>
+              )}
+            </div>
+          )}
+
+          {prospect.expected_close && (
+            <div className="flex items-center gap-1 text-xs text-text-muted">
+              <Calendar className="h-3 w-3" />
+              Close <RelativeDate date={prospect.expected_close} className="text-text-secondary" />
+            </div>
           )}
         </div>
 
-        {prospect.estimated_value !== null && prospect.estimated_value !== undefined && (
-          <div className="flex items-center gap-1 text-sm">
-            <span className="font-semibold tabular-nums text-foreground">
-              {formatCurrency(prospect.estimated_value)}
-            </span>
-            {prospect.probability !== null && prospect.probability !== undefined && (
-              <span className="text-text-muted">· {prospect.probability}%</span>
-            )}
-          </div>
-        )}
-
-        {prospect.platform_notes && (
-          <p className="line-clamp-2 text-xs text-text-secondary">{prospect.platform_notes}</p>
-        )}
-
-        {prospect.next_action && (
-          <div className="rounded bg-muted px-2 py-1 text-xs text-text-secondary">
-            <span className="text-text-muted">Next: </span>
-            {prospect.next_action}
-            {prospect.next_action_date && (
-              <span className="ml-1 text-text-muted">
-                (<RelativeDate date={prospect.next_action_date} />)
-              </span>
-            )}
-          </div>
-        )}
-
-        {prospect.expected_close && (
-          <div className="flex items-center gap-1 text-xs text-text-muted">
-            <Calendar className="h-3 w-3" />
-            Close <RelativeDate date={prospect.expected_close} className="text-text-secondary" />
-          </div>
-        )}
-      </div>
-
-      {/* Quick actions (show on hover) */}
-      <div className="mt-2 hidden gap-1 group-hover:flex">
-        {prospect.stage !== "won" && prospect.stage !== "lost" && (
-          <>
+        {/* Quick won/lost actions */}
+        {stage !== "won" && stage !== "lost" && (
+          <div className="mt-2 hidden gap-1 group-hover:flex" onClick={(e) => e.preventDefault()}>
             <button
               type="button"
-              onClick={() => handleQuickMove("won")}
+              onClick={(e) => { e.preventDefault(); handleQuickMove("won"); }}
               disabled={moving}
               className="flex-1 rounded border border-success/30 bg-success/10 px-1.5 py-0.5 text-xs text-success transition-colors hover:bg-success/20 disabled:opacity-50"
             >
@@ -317,16 +309,16 @@ function ProspectCard({
             </button>
             <button
               type="button"
-              onClick={() => handleQuickMove("lost")}
+              onClick={(e) => { e.preventDefault(); handleQuickMove("lost"); }}
               disabled={moving}
               className="flex-1 rounded border border-danger/30 bg-danger/10 px-1.5 py-0.5 text-xs text-danger transition-colors hover:bg-danger/20 disabled:opacity-50"
             >
               Lost
             </button>
-          </>
+            {moving && <Loader2 className="h-3 w-3 animate-spin text-text-muted" />}
+          </div>
         )}
-        {moving && <Loader2 className="h-3 w-3 animate-spin text-text-muted" />}
       </div>
-    </div>
+    </Link>
   );
 }

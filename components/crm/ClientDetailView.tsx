@@ -8,11 +8,13 @@ import {
   Briefcase,
   Calendar,
   Clock,
+  GitBranch,
   Globe,
   Mail,
   MessagesSquare,
   Phone,
   ScrollText,
+  TrendingUp,
   Wrench,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +29,7 @@ import { ClientCommunicationsTab } from "@/components/crm/ClientCommunicationsTa
 import { ClientTimeTab } from "@/components/crm/ClientTimeTab";
 import { ClientDecisionsTab } from "@/components/crm/ClientDecisionsTab";
 import { LogCommunicationSheet } from "@/components/crm/LogCommunicationSheet";
+import { ConvertToClientDialog } from "@/components/crm/ConvertToClientDialog";
 import { formatCurrency, formatLabel } from "@/lib/format";
 import { daysUntil } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -46,6 +49,21 @@ export type ProjectWithTasks = Tables<"projects"> & {
 export type ClientTimeLog = Tables<"time_logs"> & {
   projects: { id: string; name: string } | null;
   tasks: { id: string; title: string } | null;
+};
+
+const STAGE_LABELS: Record<string, string> = {
+  lead: "Lead", contacted: "Contacted", discovery: "Discovery",
+  proposal: "Proposal", negotiation: "Negotiation", won: "Won", lost: "Lost",
+};
+
+const STAGE_COLORS: Record<string, string> = {
+  lead: "bg-text-muted/20 text-text-muted",
+  contacted: "bg-primary/10 text-primary",
+  discovery: "bg-primary/20 text-primary",
+  proposal: "bg-warning/20 text-warning",
+  negotiation: "bg-warning/30 text-warning",
+  won: "bg-success/20 text-success",
+  lost: "bg-danger/20 text-danger",
 };
 
 const TABS = [
@@ -87,6 +105,9 @@ export function ClientDetailView({
   const activeTab: TabValue = isTabValue(tabParam) ? tabParam : "overview";
 
   const [logSheetOpen, setLogSheetOpen] = useState(searchParams.get("log") === "1");
+  const [convertOpen, setConvertOpen] = useState(false);
+
+  const isProspect = client.status === "prospect";
 
   function handleTabChange(value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -182,6 +203,58 @@ export function ClientDetailView({
         </div>
       </div>
 
+      {isProspect && (
+        <div className="mb-6 rounded-xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <div className="flex items-center gap-1.5">
+                <GitBranch className="h-4 w-4 text-text-muted" />
+                <span className="font-medium text-text-secondary">Pipeline stage</span>
+                <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", STAGE_COLORS[client.pipeline_stage ?? "lead"] ?? "bg-muted text-text-muted")}>
+                  {STAGE_LABELS[client.pipeline_stage ?? "lead"] ?? client.pipeline_stage ?? "Lead"}
+                </span>
+              </div>
+
+              {client.probability != null && (
+                <div className="flex items-center gap-1.5 text-text-secondary">
+                  <TrendingUp className="h-3.5 w-3.5 text-text-muted" />
+                  <span>{client.probability}% probability</span>
+                </div>
+              )}
+
+              {client.estimated_value != null && (
+                <div className="flex items-center gap-1.5 text-text-secondary">
+                  <span className="text-text-muted">Est.</span>
+                  <span className="font-medium text-foreground">{formatCurrency(client.estimated_value)}</span>
+                </div>
+              )}
+
+              {client.expected_close && (
+                <div className="flex items-center gap-1.5 text-text-secondary">
+                  <Calendar className="h-3.5 w-3.5 text-text-muted" />
+                  <span>Close </span>
+                  <RelativeDate date={client.expected_close} />
+                </div>
+              )}
+
+              {client.next_action && (
+                <div className="flex items-center gap-1.5 text-text-secondary">
+                  <span className="text-text-muted">Next:</span>
+                  <span>{client.next_action}</span>
+                  {client.next_action_date && (
+                    <RelativeDate date={client.next_action_date} className="text-text-muted" />
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Button onClick={() => setConvertOpen(true)} size="sm">
+              Convert to client
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={(v) => typeof v === "string" && handleTabChange(v)}>
         <TabsList variant="line" className="mb-6">
           {TABS.map(({ value, label, icon: Icon }) => (
@@ -239,6 +312,14 @@ export function ClientDetailView({
         open={logSheetOpen}
         onOpenChange={setLogSheetOpen}
       />
+
+      {isProspect && (
+        <ConvertToClientDialog
+          prospect={client}
+          open={convertOpen}
+          onOpenChange={setConvertOpen}
+        />
+      )}
     </div>
   );
 }

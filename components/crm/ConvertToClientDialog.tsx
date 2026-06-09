@@ -21,7 +21,6 @@ export function ConvertToClientDialog({
 }) {
   const router = useRouter();
   const [converting, setConverting] = useState(false);
-  const [name, setName] = useState(prospect.company || prospect.name);
   const [monthlyValue, setMonthlyValue] = useState(
     prospect.estimated_value ? String(Math.round(prospect.estimated_value / 12)) : ""
   );
@@ -29,79 +28,54 @@ export function ConvertToClientDialog({
   if (!open) return null;
 
   async function handleConvert() {
-    if (!name.trim()) {
-      toast.error("Client name is required");
-      return;
-    }
     setConverting(true);
     const supabase = createClient();
-    const { error } = await supabase.from("clients").insert({
-      name: name.trim(),
-      status: "active",
-      monthly_value: monthlyValue ? parseFloat(monthlyValue) : null,
-      health_score: 3,
-    });
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        status: "active",
+        pipeline_stage: "won",
+        monthly_value: monthlyValue ? parseFloat(monthlyValue) : null,
+      })
+      .eq("id", prospect.id);
     setConverting(false);
     if (error) {
-      toast.error("Failed to create client", { description: error.message });
+      toast.error("Failed to convert", { description: error.message });
       return;
     }
-    toast.success(`${name} added as an active client`);
+    toast.success(`${prospect.name} is now an active client`);
     onOpenChange(false);
-    router.push("/clients");
+    router.push(`/clients/${prospect.id}`);
     router.refresh();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">Convert to client?</h2>
+        <h2 className="text-lg font-semibold text-foreground">Convert to active client?</h2>
         <p className="mt-1 text-sm text-text-secondary">
-          {prospect.name} is now Won. Create an active client record?
+          {prospect.name} is marked as Won. Convert them to an active client? All their notes, communications, and decisions stay attached.
         </p>
 
-        <div className="mt-4 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="cc-name">Client name</Label>
-            <Input
-              id="cc-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Acme Corp"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cc-mrr">Monthly value ($)</Label>
-            <Input
-              id="cc-mrr"
-              type="number"
-              min="0"
-              step="100"
-              placeholder="e.g. 2000"
-              value={monthlyValue}
-              onChange={(e) => setMonthlyValue(e.target.value)}
-            />
-          </div>
+        <div className="mt-4 space-y-1.5">
+          <Label htmlFor="cc-mrr">Monthly value ($)</Label>
+          <Input
+            id="cc-mrr"
+            type="number"
+            min="0"
+            step="100"
+            placeholder="e.g. 2000"
+            value={monthlyValue}
+            onChange={(e) => setMonthlyValue(e.target.value)}
+          />
         </div>
 
         <div className="mt-6 flex gap-3">
-          <Button
-            variant="secondary"
-            className="flex-1"
-            onClick={() => onOpenChange(false)}
-            disabled={converting}
-          >
+          <Button variant="secondary" className="flex-1" onClick={() => onOpenChange(false)} disabled={converting}>
             Skip for now
           </Button>
           <Button className="flex-1" onClick={handleConvert} disabled={converting}>
-            {converting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Converting...
-              </>
-            ) : (
-              "Convert to client"
-            )}
+            {converting ? <><Loader2 className="h-4 w-4 animate-spin" />Converting...</> : "Convert to client"}
           </Button>
         </div>
       </div>
