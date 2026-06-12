@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Clock, Plus, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ComingSoon } from "@/components/crm/ComingSoon";
 import { RelativeDate } from "@/components/crm/RelativeDate";
@@ -35,7 +38,15 @@ export function ClientTimeTab({
   projects: ProjectWithTasks[];
   timeLogs: ClientTimeLog[];
 }) {
+  const router = useRouter();
   const [logOpen, setLogOpen] = useState(false);
+
+  async function deleteLog(id: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from("time_logs").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete", { description: error.message }); return; }
+    router.refresh();
+  }
 
   const totalHours = sumHours(timeLogs);
   const thisMonthLogs = timeLogs.filter((l) => isThisMonth(l.logged_date));
@@ -75,11 +86,12 @@ export function ClientTimeTab({
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-text-muted">Description</th>
                 <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-text-muted">Hours</th>
                 <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide text-text-muted">Billable</th>
+                <th className="w-8" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {timeLogs.map((log) => (
-                <tr key={log.id} className="transition-colors hover:bg-muted/30">
+                <tr key={log.id} className="group transition-colors hover:bg-muted/30">
                   <td className="px-3 py-2 text-text-secondary">
                     <RelativeDate date={log.logged_date} />
                   </td>
@@ -102,6 +114,16 @@ export function ClientTimeTab({
                         log.billable !== false ? "bg-success" : "bg-text-muted"
                       )}
                     />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => deleteLog(log.id)}
+                      className="text-text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                      aria-label="Delete time log"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </td>
                 </tr>
               ))}
