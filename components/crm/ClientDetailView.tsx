@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Briefcase,
@@ -14,6 +15,7 @@ import {
   MessagesSquare,
   Phone,
   ScrollText,
+  Trash2,
   TrendingUp,
   Wrench,
 } from "lucide-react";
@@ -31,6 +33,8 @@ import { ClientDecisionsTab } from "@/components/crm/ClientDecisionsTab";
 import { LogCommunicationSheet } from "@/components/crm/LogCommunicationSheet";
 import { ConvertToClientDialog } from "@/components/crm/ConvertToClientDialog";
 import { EditProspectSheet } from "@/components/crm/EditProspectSheet";
+import { ConfirmDialog } from "@/components/crm/ConfirmDialog";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { formatCurrency, formatLabel } from "@/lib/format";
 import { daysUntil } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -108,8 +112,24 @@ export function ClientDetailView({
   const [logSheetOpen, setLogSheetOpen] = useState(searchParams.get("log") === "1");
   const [convertOpen, setConvertOpen] = useState(false);
   const [editProspectOpen, setEditProspectOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isProspect = client.status === "prospect";
+
+  async function handleDelete() {
+    setDeleting(true);
+    const supabase = createSupabaseClient();
+    const { error } = await supabase.from("clients").delete().eq("id", client.id);
+    setDeleting(false);
+    if (error) {
+      toast.error("Failed to delete", { description: error.message });
+      return;
+    }
+    toast.success(`${client.name} deleted`);
+    router.push("/clients");
+    router.refresh();
+  }
 
   function handleTabChange(value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -197,6 +217,9 @@ export function ClientDetailView({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <Button variant="ghost" size="icon-sm" onClick={() => setDeleteOpen(true)} aria-label="Delete" className="text-text-muted hover:text-danger">
+              <Trash2 className="h-4 w-4" />
+            </Button>
             <Button onClick={() => setLogSheetOpen(true)}>
               <MessagesSquare className="h-4 w-4" />
               Log Communication
@@ -335,6 +358,16 @@ export function ClientDetailView({
           onOpenChange={setEditProspectOpen}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title={`Delete ${isProspect ? "prospect" : "client"}?`}
+        description={`This will permanently delete ${client.name} and all their communications, decisions, projects, tasks, and time logs. This cannot be undone.`}
+        confirmLabel={`Delete ${isProspect ? "prospect" : "client"}`}
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </div>
   );
 }

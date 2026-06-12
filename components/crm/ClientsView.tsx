@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { GitBranch, LayoutGrid, List, Search, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { GitBranch, LayoutGrid, List, Search, Trash2, Users } from "lucide-react";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+import { ConfirmDialog } from "@/components/crm/ConfirmDialog";
 import { PageHeader } from "@/components/crm/PageHeader";
 import { ComingSoon } from "@/components/crm/ComingSoon";
 import { ClientCard } from "@/components/crm/ClientCard";
@@ -62,6 +66,7 @@ function healthLabel(value: string) {
 type ViewTab = "clients" | "prospects";
 
 export function ClientsView({ clients }: { clients: ClientWithStats[] }) {
+  const router = useRouter();
   const [tab, setTab] = useState<ViewTab>("clients");
   const [view, setView] = useState<"table" | "grid">("table");
   const [search, setSearch] = useState("");
@@ -69,6 +74,23 @@ export function ClientsView({ clients }: { clients: ClientWithStats[] }) {
   const [healthFilter, setHealthFilter] = useState<string>(ALL);
   const [billingFilter, setBillingFilter] = useState<string>(ALL);
   const [addProspectOpen, setAddProspectOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ClientWithStats | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const supabase = createSupabaseClient();
+    const { error } = await supabase.from("clients").delete().eq("id", deleteTarget.id);
+    setDeleting(false);
+    if (error) {
+      toast.error("Failed to delete", { description: error.message });
+      return;
+    }
+    toast.success(`${deleteTarget.name} deleted`);
+    setDeleteTarget(null);
+    router.refresh();
+  }
 
   const activeClients = useMemo(() => clients.filter((c) => c.status !== "prospect"), [clients]);
   const prospects = useMemo(() => clients.filter((c) => c.status === "prospect"), [clients]);
@@ -207,7 +229,7 @@ export function ClientsView({ clients }: { clients: ClientWithStats[] }) {
           <ComingSoon icon={Search} title={`No ${tab} match your search`} description="Try adjusting your search." />
         )
       ) : tab === "prospects" ? (
-        <ProspectsTable prospects={filtered} />
+        <ProspectsTable prospects={filtered} onDelete={setDeleteTarget} />
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((client) => <ClientCard key={client.id} client={client} />)}
@@ -266,6 +288,9 @@ export function ClientsView({ clients }: { clients: ClientWithStats[] }) {
                       <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                         <Button variant="ghost" size="sm" nativeButton={false} render={<Link href={`/clients/${client.id}`}>View</Link>} />
                         <Button variant="ghost" size="sm" nativeButton={false} render={<Link href={`/clients/${client.id}?tab=communications&log=1`}>Quick log</Link>} />
+                        <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(client)} aria-label="Delete" className="text-text-muted hover:text-danger">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -277,11 +302,21 @@ export function ClientsView({ clients }: { clients: ClientWithStats[] }) {
       )}
 
       <AddProspectSheet open={addProspectOpen} onOpenChange={setAddProspectOpen} />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`Delete ${deleteTarget?.status === "prospect" ? "prospect" : "client"}?`}
+        description={`This will permanently delete ${deleteTarget?.name ?? ""} and all their attached data. This cannot be undone.`}
+        confirmLabel="Delete"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
 
-function ProspectsTable({ prospects }: { prospects: ClientWithStats[] }) {
+function ProspectsTable({ prospects, onDelete }: { prospects: ClientWithStats[]; onDelete: (p: ClientWithStats) => void }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <Table>
@@ -294,6 +329,7 @@ function ProspectsTable({ prospects }: { prospects: ClientWithStats[] }) {
             <TableHead>Expected close</TableHead>
             <TableHead>Next action</TableHead>
             <TableHead>Last contact</TableHead>
+            <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -331,6 +367,11 @@ function ProspectsTable({ prospects }: { prospects: ClientWithStats[] }) {
                     : <span className="text-text-muted">—</span>}
                 </TableCell>
                 <TableCell><RelativeDate date={p.lastContactAt} /></TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon-sm" onClick={() => onDelete(p)} aria-label="Delete" className="opacity-0 text-text-muted transition-opacity hover:text-danger group-hover:opacity-100">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TableCell>
               </TableRow>
             );
           })}

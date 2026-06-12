@@ -1,9 +1,14 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Mail, MessageSquare, MessagesSquare, Phone, StickyNote, Users, Video } from "lucide-react";
+import { Bell, Mail, MessageSquare, MessagesSquare, Phone, StickyNote, Trash2, Users, Video } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ComingSoon } from "@/components/crm/ComingSoon";
+import { ConfirmDialog } from "@/components/crm/ConfirmDialog";
 import { RelativeDate } from "@/components/crm/RelativeDate";
 import { formatAbsoluteDate } from "@/lib/dates";
 import { formatLabel } from "@/lib/format";
@@ -41,6 +46,22 @@ export function ClientCommunicationsTab({
   communications: Communication[];
   onLogCommunication: () => void;
 }) {
+  const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<Communication | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("communications").delete().eq("id", deleteTarget.id);
+    setDeleting(false);
+    if (error) { toast.error("Failed to delete", { description: error.message }); return; }
+    toast.success("Communication deleted");
+    setDeleteTarget(null);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -66,7 +87,7 @@ export function ClientCommunicationsTab({
             const overdue = comm.follow_up_required && isOverdue(comm.follow_up_date);
 
             return (
-              <li key={comm.id} className="rounded-xl border border-border bg-card p-4">
+              <li key={comm.id} className="group rounded-xl border border-border bg-card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
                     <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-text-secondary">
@@ -109,15 +130,36 @@ export function ClientCommunicationsTab({
                     </div>
                   </div>
 
-                  <span className="shrink-0 whitespace-nowrap text-xs text-text-muted">
-                    <RelativeDate date={comm.logged_at} />
-                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="whitespace-nowrap text-xs text-text-muted">
+                      <RelativeDate date={comm.logged_at} />
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => setDeleteTarget(comm)}
+                      aria-label="Delete communication"
+                      className="opacity-0 text-text-muted transition-opacity hover:text-danger group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </li>
             );
           })}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete communication?"
+        description={`Delete "${deleteTarget?.subject || formatLabel(deleteTarget?.type ?? "")}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -1,10 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle, ScrollText, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { CheckCircle, ScrollText, Search, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ComingSoon } from "@/components/crm/ComingSoon";
+import { ConfirmDialog } from "@/components/crm/ConfirmDialog";
 import { RelativeDate } from "@/components/crm/RelativeDate";
 import { LogDecisionSheet } from "@/components/crm/LogDecisionSheet";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -33,8 +37,23 @@ export function ClientDecisionsTab({
   communications: Communication[];
   systems: { id: string; name: string }[];
 }) {
+  const router = useRouter();
   const [logOpen, setLogOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!deleteTargetId) return;
+    setDeleting(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("decisions_log").delete().eq("id", deleteTargetId);
+    setDeleting(false);
+    if (error) { toast.error("Failed to delete", { description: error.message }); return; }
+    toast.success("Decision deleted");
+    setDeleteTargetId(null);
+    router.refresh();
+  }
 
   const unified = useMemo(() => {
     const items: UnifiedDecision[] = [];
@@ -113,7 +132,7 @@ export function ClientDecisionsTab({
       ) : (
         <div className="space-y-3">
           {filtered.map((d) => (
-            <DecisionCard key={d.id} decision={d} />
+            <DecisionCard key={d.id} decision={d} onDelete={setDeleteTargetId} />
           ))}
         </div>
       )}
@@ -124,13 +143,23 @@ export function ClientDecisionsTab({
         open={logOpen}
         onOpenChange={setLogOpen}
       />
+
+      <ConfirmDialog
+        open={!!deleteTargetId}
+        title="Delete decision?"
+        description="This will permanently remove this decision from the log. This cannot be undone."
+        confirmLabel="Delete"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }
 
-function DecisionCard({ decision }: { decision: UnifiedDecision }) {
+function DecisionCard({ decision, onDelete }: { decision: UnifiedDecision; onDelete?: (id: string) => void }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="group rounded-xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="font-medium text-foreground">{decision.decision}</p>
@@ -151,8 +180,21 @@ function DecisionCard({ decision }: { decision: UnifiedDecision }) {
             )}
           </div>
         </div>
-        <div className="shrink-0 text-xs text-text-muted">
-          <RelativeDate date={decision.date} />
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-text-muted">
+            <RelativeDate date={decision.date} />
+          </span>
+          {decision.source === "log" && onDelete && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onDelete(decision.id)}
+              aria-label="Delete decision"
+              className="opacity-0 text-text-muted transition-opacity hover:text-danger group-hover:opacity-100"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

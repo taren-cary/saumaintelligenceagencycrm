@@ -10,6 +10,7 @@ import {
   Lock,
   Plus,
   ScrollText,
+  Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { ComingSoon } from "@/components/crm/ComingSoon";
 import { StatusBadge } from "@/components/crm/StatusBadge";
 import { RelativeDate } from "@/components/crm/RelativeDate";
 import { AddProjectSheet } from "@/components/crm/AddProjectSheet";
+import { ConfirmDialog } from "@/components/crm/ConfirmDialog";
 import { formatLabel } from "@/lib/format";
 import { daysUntil } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -94,6 +96,19 @@ function ProjectCard({ project, clientId }: { project: ProjectWithTasks; clientI
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [addingTaskLoading, setAddingTaskLoading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteProject() {
+    setDeleting(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("projects").delete().eq("id", project.id);
+    setDeleting(false);
+    if (error) { toast.error("Failed to delete project", { description: error.message }); return; }
+    toast.success(`"${project.name}" deleted`);
+    setDeleteOpen(false);
+    router.refresh();
+  }
 
   const pct = progressPct(project.actual_hours, project.estimated_hours);
   const deadlineDays = daysUntil(project.deadline);
@@ -131,7 +146,7 @@ function ProjectCard({ project, clientId }: { project: ProjectWithTasks; clientI
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+        className="group flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-muted/40"
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -182,10 +197,29 @@ function ProjectCard({ project, clientId }: { project: ProjectWithTasks; clientI
           )}
         </div>
 
-        <ChevronDown
-          className={cn("mt-1 h-4 w-4 shrink-0 text-text-muted transition-transform", expanded && "rotate-180")}
-        />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
+            aria-label="Delete project"
+            className="text-text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+          <ChevronDown className={cn("h-4 w-4 shrink-0 text-text-muted transition-transform", expanded && "rotate-180")} />
+        </div>
       </button>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete project?"
+        description={`Delete "${project.name}" and all its tasks and time logs? This cannot be undone.`}
+        confirmLabel="Delete project"
+        loading={deleting}
+        onConfirm={handleDeleteProject}
+        onCancel={() => setDeleteOpen(false)}
+      />
 
       {expanded && (
         <div className="border-t border-border">
@@ -246,6 +280,16 @@ function TaskRow({ task, projectScopeLocked }: { task: Task; projectScopeLocked:
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [hoursValue, setHoursValue] = useState(String(task.actual_hours ?? ""));
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteTask() {
+    setDeleting(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+    setDeleting(false);
+    if (error) { toast.error("Failed to delete task", { description: error.message }); return; }
+    router.refresh();
+  }
 
   async function updateTask(patch: Partial<Pick<Task, "status" | "priority" | "is_scope_creep" | "actual_hours">>) {
     if (saving) return;
@@ -270,7 +314,7 @@ function TaskRow({ task, projectScopeLocked }: { task: Task; projectScopeLocked:
   const isDone = task.status === "done";
 
   return (
-    <li className={cn("flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-muted/30", isDone && "opacity-60")}>
+    <li className={cn("group flex items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-muted/30", isDone && "opacity-60")}>
       <button
         type="button"
         onClick={() => updateTask({ status: isDone ? "todo" : "done" })}
@@ -354,6 +398,16 @@ function TaskRow({ task, projectScopeLocked }: { task: Task; projectScopeLocked:
           <AlertTriangle className="h-3.5 w-3.5" />
         </button>
       )}
+
+      <button
+        type="button"
+        onClick={handleDeleteTask}
+        disabled={deleting || saving}
+        className="text-text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+        title="Delete task"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
     </li>
   );
 }
