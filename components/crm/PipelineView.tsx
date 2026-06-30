@@ -246,78 +246,76 @@ function ProspectCard({
   const stage = (prospect.pipeline_stage ?? "lead") as Stage;
 
   return (
-    <Link href={`/clients/${prospect.id}`}>
-      <div
-        draggable
-        onDragStart={(e) => { e.stopPropagation(); onDragStart(e, prospect.id); }}
-        onDragEnd={onDragEnd}
-        className={cn(
-          "group cursor-grab rounded-lg border border-border bg-card p-3 transition-all active:cursor-grabbing",
-          isDragging && "opacity-40 ring-1 ring-primary/40"
-        )}
-      >
-        <div className="space-y-2">
-          <div>
-            <p className="font-medium text-foreground leading-tight group-hover:underline">{prospect.name}</p>
-            {prospect.company && <p className="text-xs text-text-muted">{prospect.company}</p>}
-          </div>
-
-          {prospect.estimated_value != null && (
-            <div className="flex items-center gap-1 text-sm">
-              <span className="font-semibold tabular-nums text-foreground">
-                {formatCurrency(prospect.estimated_value)}
-              </span>
-              {prospect.probability != null && (
-                <span className="text-text-muted">· {prospect.probability}%</span>
-              )}
-            </div>
-          )}
-
-          {prospect.platform_notes && (
-            <p className="line-clamp-2 text-xs text-text-secondary">{prospect.platform_notes}</p>
-          )}
-
-          {prospect.next_action && (
-            <div className="rounded bg-muted px-2 py-1 text-xs text-text-secondary">
-              <span className="text-text-muted">Next: </span>
-              {prospect.next_action}
-              {prospect.next_action_date && (
-                <span className="ml-1 text-text-muted">(<RelativeDate date={prospect.next_action_date} />)</span>
-              )}
-            </div>
-          )}
-
-          {prospect.expected_close && (
-            <div className="flex items-center gap-1 text-xs text-text-muted">
-              <Calendar className="h-3 w-3" />
-              Close <RelativeDate date={prospect.expected_close} className="text-text-secondary" />
-            </div>
-          )}
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, prospect.id)}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "group cursor-grab rounded-lg border border-border bg-card p-3 transition-all active:cursor-grabbing",
+        isDragging && "opacity-40 ring-1 ring-primary/40"
+      )}
+    >
+      <Link href={`/clients/${prospect.id}`} className="block space-y-2">
+        <div>
+          <p className="font-medium text-foreground leading-tight group-hover:underline">{prospect.name}</p>
+          {prospect.company && <p className="text-xs text-text-muted">{prospect.company}</p>}
         </div>
 
-        {/* Quick won/lost actions */}
-        {stage !== "won" && stage !== "lost" && (
-          <div className="mt-2 hidden gap-1 group-hover:flex" onClick={(e) => e.preventDefault()}>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); handleQuickMove("won"); }}
-              disabled={moving}
-              className="flex-1 rounded border border-success/30 bg-success/10 px-1.5 py-0.5 text-xs text-success transition-colors hover:bg-success/20 disabled:opacity-50"
-            >
-              Won
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); handleQuickMove("lost"); }}
-              disabled={moving}
-              className="flex-1 rounded border border-danger/30 bg-danger/10 px-1.5 py-0.5 text-xs text-danger transition-colors hover:bg-danger/20 disabled:opacity-50"
-            >
-              Lost
-            </button>
-            {moving && <Loader2 className="h-3 w-3 animate-spin text-text-muted" />}
+        {prospect.estimated_value != null && (
+          <div className="flex items-center gap-1 text-sm">
+            <span className="font-semibold tabular-nums text-foreground">
+              {formatCurrency(prospect.estimated_value)}
+            </span>
+            {prospect.probability != null && (
+              <span className="text-text-muted">· {prospect.probability}%</span>
+            )}
           </div>
         )}
-      </div>
-    </Link>
+
+        {prospect.platform_notes && (
+          <p className="line-clamp-2 text-xs text-text-secondary">{prospect.platform_notes}</p>
+        )}
+
+        {prospect.next_action && (
+          <div className="rounded bg-muted px-2 py-1 text-xs text-text-secondary">
+            <span className="text-text-muted">Next: </span>
+            {prospect.next_action}
+            {prospect.next_action_date && (
+              <span className="ml-1 text-text-muted">(<RelativeDate date={prospect.next_action_date} />)</span>
+            )}
+          </div>
+        )}
+
+        {prospect.expected_close && (
+          <div className="flex items-center gap-1 text-xs text-text-muted">
+            <Calendar className="h-3 w-3" />
+            Close <RelativeDate date={prospect.expected_close} className="text-text-secondary" />
+          </div>
+        )}
+      </Link>
+
+      {/* Quick won/lost actions */}
+      {stage !== "won" && stage !== "lost" && (
+        <div className="mt-2 hidden gap-1 group-hover:flex">
+          <button
+            type="button"
+            onClick={() => handleQuickMove("won")}
+            disabled={moving}
+            className="flex-1 rounded border border-success/30 bg-success/10 px-1.5 py-0.5 text-xs text-success transition-colors hover:bg-success/20 disabled:opacity-50"
+          >
+            Won
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickMove("lost")}
+            disabled={moving}
+            className="flex-1 rounded border border-danger/30 bg-danger/10 px-1.5 py-0.5 text-xs text-danger transition-colors hover:bg-danger/20 disabled:opacity-50"
+          >
+            Lost
+          </button>
+          {moving && <Loader2 className="h-3 w-3 animate-spin text-text-muted" />}
+        </div>
+      )}
+    </div>
   );
 }
