@@ -92,7 +92,6 @@ export function PipelineView({ prospects }: { prospects: Prospect[] }) {
   function handleDragStart(e: React.DragEvent, id: string) {
     setDraggingId(id);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("application/x-prospect-id", id);
   }
 
   function handleDragEnd() {
@@ -116,7 +115,7 @@ export function PipelineView({ prospects }: { prospects: Prospect[] }) {
 
   function handleDrop(e: React.DragEvent, stage: Stage) {
     e.preventDefault();
-    const id = e.dataTransfer.getData("application/x-prospect-id");
+    const id = draggingId;
     setDragOverStage(null);
     dragCounterRef.current = {} as Record<Stage, number>;
     if (id) {
